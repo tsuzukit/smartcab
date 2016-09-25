@@ -23,8 +23,6 @@ class QLearner:
         if self.greedy:
             exploration_rate -= self.num_learn / 10000
 
-        print (exploration_rate)
-
         if QLearner._should_be_random(exploration_rate):
             best_action = random.choice(self.actions)
             return best_action
@@ -136,19 +134,20 @@ class LearningAgent(Agent):
             self.penalty += 1
 
         if LearningAgent._has_reached_deadline(deadline):
-            stats_data = self._create_stats_data(0)
+            stats_data = self._create_stats_data(success=0, timeup=1)
             self.stats.append(stats_data)
 
         if LearningAgent._has_reached_destination(reward):
-            stats_data = self._create_stats_data(1)
+            stats_data = self._create_stats_data(success=1, timeup=0)
             self.stats.append(stats_data)
 
-    def _create_stats_data(self, success):
+    def _create_stats_data(self, success, timeup):
         stats_data = {"trial": self.trial,
                       "move": self.move,
                       "reward": self.net_reward,
                       "penalty": self.penalty,
-                      "success": success}
+                      "success": success,
+                      "timeup": timeup}
         return stats_data
 
     @staticmethod
