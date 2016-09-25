@@ -4,7 +4,7 @@ from planner import RoutePlanner
 from simulator import Simulator
 
 import random
-
+import csv
 
 class QLearner:
 
@@ -73,9 +73,20 @@ class LearningAgent(Agent):
                                   default_q_value,
                                   epsilon)
 
+        # For statistics
+        self.stats = []
+        self.trial = 0
+        self.reward = 0
+        self.penalty = 0
+        self.move = 0
+
     def reset(self, destination=None):
         self.planner.route_to(destination)
         # TODO: Prepare for a new trip; reset any variables here, if required
+        self.reward = 0
+        self.penalty = 0
+        self.move = 0
+        self.trial += 1
 
     def update(self, t):
         # Gather inputs
@@ -92,6 +103,9 @@ class LearningAgent(Agent):
         # Execute action and get reward
         reward = self.env.act(self, action)
 
+        # record stats
+        self._record_stats(reward, deadline)
+
         # TODO: Learn policy based on state, action, reward
         self.q_learner.learn(self.state, action, reward)
 
@@ -101,6 +115,48 @@ class LearningAgent(Agent):
         states = inputs.items()
         states.append(("next_waypoint", self.next_waypoint))
         return states
+
+    def _record_stats(self, reward, deadline):
+        self.reward += reward
+        self.move += 1
+
+        if LearningAgent._has_recieved_penalty(reward):
+            self.penalty += 1
+
+        if LearningAgent._has_reached_deadline(deadline):
+            stats_data = {"trial": self.trial,
+                          "move": self.move,
+                          "reward": self.reward,
+                          "penalty": self.penalty,
+                          "success": 0}
+            self.stats.append(stats_data)
+
+        if LearningAgent._has_reached_destination(reward):
+            stats_data = {"trial": self.trial,
+                          "move": self.move,
+                          "reward": self.reward,
+                          "penalty": self.penalty,
+                          "success": 1}
+            self.stats.append(stats_data)
+
+    @staticmethod
+    def _has_reached_deadline(deadline):
+        return deadline == 0
+
+    @staticmethod
+    def _has_reached_destination(reward):
+        return reward >= 12.0
+
+    @staticmethod
+    def _has_recieved_penalty(reward):
+        return reward < 0
+
+    def write_stats(self):
+        keys = self.stats[0].keys()
+        with open('result.csv', 'wb') as output_file:
+            dict_writer = csv.DictWriter(output_file, keys)
+            dict_writer.writeheader()
+            dict_writer.writerows(self.stats)
 
 
 def run():
@@ -113,11 +169,14 @@ def run():
     # NOTE: You can set enforce_deadline=False while debugging to allow longer trials
 
     # Now simulate it
-    sim = Simulator(e, update_delay=0.5, display=True)  # create simulator (uses pygame when display=True, if available)
+    sim = Simulator(e, update_delay=0.01, display=False)  # create simulator (uses pygame when display=True, if available)
     # NOTE: To speed up simulation, reduce update_delay and/or set display=False
 
     sim.run(n_trials=100)  # run for a specified number of trials
     # NOTE: To quit midway, press Esc or close pygame window, or hit Ctrl+C on the command-line
+
+    # when everything finishes, dump statistics to csv
+    a.write_stats()
 
 
 if __name__ == '__main__':
