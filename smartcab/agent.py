@@ -25,6 +25,8 @@ class LearningAgent(Agent):
         deadline = self.env.get_deadline(self)
 
         # TODO: Update state
+        states = self.getState(inputs)
+        self.state = tuple(states)
         
         # TODO: Select action according to your policy
         action = random.choice(Environment.valid_actions)
@@ -36,6 +38,10 @@ class LearningAgent(Agent):
 
         print "LearningAgent.update(): deadline = {}, inputs = {}, action = {}, reward = {}".format(deadline, inputs, action, reward)  # [debug]
 
+    def getState(self, inputs):
+        states = inputs.items()
+        states.append(("next_waypoint", self.next_waypoint))
+        return states
 
 def run():
     """Run the agent for a finite number of trials."""
