@@ -77,23 +77,24 @@ class LearningAgent(Agent):
         deadline = self.env.get_deadline(self)
 
         # TODO: Update state
-        states = self.getState(inputs)
-        self.state = tuple(states)
+        self.state = tuple(self._get_state(inputs))
         
         # TODO: Select action according to your policy
-        action = random.choice(Environment.valid_actions)
+        action = self.q_learner.select_action(self.state)
 
         # Execute action and get reward
         reward = self.env.act(self, action)
 
         # TODO: Learn policy based on state, action, reward
+        self.q_learner.learn(self.state, action, reward)
 
         print "LearningAgent.update(): deadline = {}, inputs = {}, action = {}, reward = {}".format(deadline, inputs, action, reward)  # [debug]
 
-    def getState(self, inputs):
+    def _get_state(self, inputs):
         states = inputs.items()
         states.append(("next_waypoint", self.next_waypoint))
         return states
+
 
 def run():
     """Run the agent for a finite number of trials."""
