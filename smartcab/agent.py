@@ -9,18 +9,18 @@ class QLearner:
 
     DEFAULT_Q_VALUE = 0
 
-    def __init__(self, actions, learning_rate=0.5, discount_factor=0.3, exploration_rate=0.1, greedy=False):
+    def __init__(self, actions, learning_rate=0.5, discount_factor=0.3, exploration_rate=0.1, greedy_exploration=False):
         self.num_learn = 0
         self.actions = actions
         self.learning_rate = learning_rate
         self.discount_factor = discount_factor
         self.exploration_rate = exploration_rate
-        self.greedy = greedy
+        self.greedy_exploration = greedy_exploration
         self.Q = {}
 
     def select_action(self, state):
         exploration_rate = self.exploration_rate
-        if self.greedy:
+        if self.greedy_exploration:
             exploration_rate -= self.num_learn / 10000
 
         if QLearner._should_be_random(exploration_rate):
@@ -71,14 +71,14 @@ class LearningAgent(Agent):
         self.color = 'red'  # override color
         self.planner = RoutePlanner(self.env, self)  # simple route planner to get next_waypoint
         # TODO: Initialize any additional variables here
-        learning_rate = 0.6
+        learning_rate = 0.8
         discount_factor = 0.3
         exploration_rate = 0.1
         self.q_learner = QLearner(actions=Environment.valid_actions,
                                   learning_rate=learning_rate,
                                   discount_factor=discount_factor,
                                   exploration_rate=exploration_rate,
-                                  greedy=True)
+                                  greedy_exploration=True)
 
         # For statistics
         self.stats = []
