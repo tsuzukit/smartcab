@@ -5,6 +5,57 @@ from simulator import Simulator
 
 import random
 
+
+class QLearner:
+
+    LEARNING_RATE = 0.5
+    DISCOUNT_RATE = 0.3
+    DEFAULT_Q_VALUE = 0
+    EPSILON = 0.1
+
+    def __init__(self, actions):
+        self.actions = actions
+        self.Q = {}
+
+    def select_action(self, state):
+        if QLearner._should_be_random(QLearner.EPSILON):
+            best_action = random.choice(self.actions)
+            return best_action
+
+        return self._select_best_action(state)
+
+    def learn(self, state, action, reward):
+        if (state, action) not in self.Q:
+            self.Q[(state, action)] = QLearner.DEFAULT_Q_VALUE
+
+        residual_q = (1 - QLearner.LEARNING_RATE) * self.Q[state, action]
+        learned_q = QLearner.LEARNING_RATE * (reward + QLearner.DISCOUNT_RATE * self._get_max_q_value(state))
+
+        self.Q[state, action] = residual_q + learned_q
+
+    @staticmethod
+    def _should_be_random(probability):
+        return random.random() < probability
+
+    def _get_q_value(self, state, action):
+        return self.Q.get((state, action), QLearner.DEFAULT_Q_VALUE)
+
+    def _get_max_q_value(self, state):
+        best_action = self._select_best_action(state)
+        max_q = self._get_q_value(state, best_action)
+        return max_q
+
+    def _select_best_action(self, state):
+        max_q = QLearner.DEFAULT_Q_VALUE - 1
+        best_action = None
+        for action in self.actions:
+            q = self._get_q_value(state, action)
+            if q > max_q:
+                max_q = q
+                best_action = action
+        return best_action
+
+
 class LearningAgent(Agent):
     """An agent that learns to drive in the smartcab world."""
 
@@ -13,6 +64,7 @@ class LearningAgent(Agent):
         self.color = 'red'  # override color
         self.planner = RoutePlanner(self.env, self)  # simple route planner to get next_waypoint
         # TODO: Initialize any additional variables here
+        self.q_learner = QLearner(Environment.valid_actions)
 
     def reset(self, destination=None):
         self.planner.route_to(destination)
