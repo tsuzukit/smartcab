@@ -30,7 +30,7 @@ class QLearner:
         residual_q = (1 - self.learning_rate) * self.Q[state, action]
         learned_q = self.learning_rate * (reward + self.discount_rate * self._get_max_q_value(state))
 
-        self.Q[state, action] = residual_q + learned_q
+        self.Q[(state, action)] = residual_q + learned_q
 
     @staticmethod
     def _should_be_random(probability):
@@ -76,14 +76,16 @@ class LearningAgent(Agent):
         # For statistics
         self.stats = []
         self.trial = 0
-        self.reward = 0
+        self.net_reward = 0
         self.penalty = 0
         self.move = 0
 
     def reset(self, destination=None):
         self.planner.route_to(destination)
         # TODO: Prepare for a new trip; reset any variables here, if required
-        self.reward = 0
+
+        # For statistics
+        self.net_reward = 0
         self.penalty = 0
         self.move = 0
         self.trial += 1
@@ -98,6 +100,7 @@ class LearningAgent(Agent):
         self.state = tuple(self._get_state(inputs))
         
         # TODO: Select action according to your policy
+        #action = random.choice(Environment.valid_actions)
         action = self.q_learner.select_action(self.state)
 
         # Execute action and get reward
@@ -117,27 +120,27 @@ class LearningAgent(Agent):
         return states
 
     def _record_stats(self, reward, deadline):
-        self.reward += reward
+        self.net_reward += reward
         self.move += 1
 
         if LearningAgent._has_recieved_penalty(reward):
             self.penalty += 1
 
         if LearningAgent._has_reached_deadline(deadline):
-            stats_data = {"trial": self.trial,
-                          "move": self.move,
-                          "reward": self.reward,
-                          "penalty": self.penalty,
-                          "success": 0}
+            stats_data = self._create_stats_data(0)
             self.stats.append(stats_data)
 
         if LearningAgent._has_reached_destination(reward):
-            stats_data = {"trial": self.trial,
-                          "move": self.move,
-                          "reward": self.reward,
-                          "penalty": self.penalty,
-                          "success": 1}
+            stats_data = self._create_stats_data(1)
             self.stats.append(stats_data)
+
+    def _create_stats_data(self, success):
+        stats_data = {"trial": self.trial,
+                      "move": self.move,
+                      "reward": self.net_reward,
+                      "penalty": self.penalty,
+                      "success": success}
+        return stats_data
 
     @staticmethod
     def _has_reached_deadline(deadline):
@@ -175,7 +178,7 @@ def run():
     sim.run(n_trials=100)  # run for a specified number of trials
     # NOTE: To quit midway, press Esc or close pygame window, or hit Ctrl+C on the command-line
 
-    # when everything finishes, dump statistics to csv
+    # when everything finished, dump statistics to csv
     a.write_stats()
 
 
