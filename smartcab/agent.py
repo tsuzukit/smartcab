@@ -19,10 +19,7 @@ class QLearner:
         self.Q = {}
 
     def select_action(self, state):
-        exploration_rate = self.exploration_rate
-        if self.greedy_exploration:
-            exploration_rate -= self.num_learn / 10000
-
+        exploration_rate = self._get_exploration_rate()
         if QLearner._should_be_random(exploration_rate):
             best_action = random.choice(self.actions)
             return best_action
@@ -43,6 +40,12 @@ class QLearner:
     @staticmethod
     def _should_be_random(probability):
         return random.random() < probability
+
+    def _get_exploration_rate(self):
+        if self.greedy_exploration:
+            return self.exploration_rate - self.num_learn / 10000
+
+        return self.exploration_rate
 
     def _get_q_value(self, state, action):
         return self.Q.get((state, action), QLearner.DEFAULT_Q_VALUE)
@@ -104,7 +107,7 @@ class LearningAgent(Agent):
         deadline = self.env.get_deadline(self)
 
         # TODO: Update state
-        self.state = tuple(self._get_state(inputs))
+        self.state = self._get_state(inputs)
         
         # TODO: Select action according to your policy
         #action = random.choice(Environment.valid_actions)
@@ -122,9 +125,11 @@ class LearningAgent(Agent):
         print "LearningAgent.update(): deadline = {}, inputs = {}, action = {}, reward = {}".format(deadline, inputs, action, reward)  # [debug]
 
     def _get_state(self, inputs):
-        states = inputs.items()
-        states.append(("next_waypoint", self.next_waypoint))
-        return states
+        state_variables = inputs.items()
+        state_variables.append(("next_waypoint", self.next_waypoint))
+        state_variables.remove(("right", inputs["right"]))
+        state = tuple(state_variables)
+        return state
 
     def _record_stats(self, reward, deadline):
         self.net_reward += reward
