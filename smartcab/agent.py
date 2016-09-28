@@ -2,14 +2,21 @@ from environment import Agent, Environment
 from planner import RoutePlanner
 from simulator import Simulator
 
+import math
 import random
 import csv
+
 
 class QLearner:
 
     DEFAULT_Q_VALUE = 0
+    EXPLORATION_RATE_HALF_LIFE_STEP = 300
 
     def __init__(self, actions, learning_rate=0.5, discount_factor=0.3, exploration_rate=0.1, greedy_exploration=False):
+        self.previous_action = None
+        self.previous_state = None
+        self.previous_reward = None
+
         self.num_learn = 0
         self.actions = actions
         self.learning_rate = learning_rate
@@ -27,15 +34,15 @@ class QLearner:
         return self._select_best_action(state)
 
     def learn(self, state, action, reward):
-        if (state, action) not in self.Q:
-            self.Q[(state, action)] = QLearner.DEFAULT_Q_VALUE
+        if not self._is_previous_parameter_set():
+            self._set_previous_parameters(action, state, reward)
+            return
 
-        residual_q = (1 - self.learning_rate) * self.Q[state, action]
-        learned_q = self.learning_rate * (reward + self.discount_factor * self._get_max_q_value(state))
-
-        self.Q[(state, action)] = residual_q + learned_q
+        previous_q = self._calculate_previous_q(state)
+        self.Q[(self.previous_state, self.previous_action)] = previous_q
 
         self.num_learn += 1.0
+        self._set_previous_parameters(action, state, reward)
 
     @staticmethod
     def _should_be_random(probability):
@@ -43,7 +50,7 @@ class QLearner:
 
     def _get_exploration_rate(self):
         if self.greedy_exploration:
-            return self.exploration_rate - self.num_learn / 10000
+            return self.exploration_rate * 1 / (1 + math.exp(self.num_learn - self.EXPLORATION_RATE_HALF_LIFE_STEP))
 
         return self.exploration_rate
 
@@ -52,11 +59,18 @@ class QLearner:
 
     def _get_max_q_value(self, state):
         best_action = self._select_best_action(state)
-        max_q = self._get_q_value(state, best_action)
-        return max_q
+        return self._get_q_value(state, best_action)
+
+    def _calculate_previous_q(self, state):
+        if (self.previous_state, self.previous_action) not in self.Q:
+            self.Q[(self.previous_state, self.previous_action)] = QLearner.DEFAULT_Q_VALUE
+
+        residual_q = (1 - self.learning_rate) * self.Q[(self.previous_state, self.previous_action)]
+        learned_q = self.learning_rate * (self.previous_reward + self.discount_factor * self._get_max_q_value(state))
+        return residual_q + learned_q
 
     def _select_best_action(self, state):
-        max_q = QLearner.DEFAULT_Q_VALUE - 1
+        max_q = QLearner.DEFAULT_Q_VALUE
         best_action = None
         for action in self.actions:
             q = self._get_q_value(state, action)
@@ -64,6 +78,16 @@ class QLearner:
                 max_q = q
                 best_action = action
         return best_action
+
+    def _is_previous_parameter_set(self):
+        return self.previous_action is not None and \
+               self.previous_state is not None and \
+               self.previous_reward is not None
+
+    def _set_previous_parameters(self, action, state, reward):
+        self.previous_action = action
+        self.previous_state = state
+        self.previous_reward = reward
 
 
 class LearningAgent(Agent):
@@ -74,7 +98,7 @@ class LearningAgent(Agent):
         self.color = 'red'  # override color
         self.planner = RoutePlanner(self.env, self)  # simple route planner to get next_waypoint
         # TODO: Initialize any additional variables here
-        learning_rate = 0.8
+        learning_rate = 0.9
         discount_factor = 0.3
         exploration_rate = 0.1
         self.q_learner = QLearner(actions=Environment.valid_actions,
